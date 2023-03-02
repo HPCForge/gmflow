@@ -9,7 +9,7 @@ import os
 from data import build_train_dataset
 from gmflow.gmflow import GMFlow
 from loss import flow_loss_func
-from evaluate import (validate_chairs, validate_things, validate_sintel, validate_kitti,
+from evaluate import (validate_boiling, validate_chairs, validate_things, validate_sintel, validate_kitti,
                       create_sintel_submission, create_kitti_submission, inference_on_dir)
 
 from utils.logger import Logger
@@ -194,7 +194,10 @@ def main(args):
     if args.resume:
         print('Load checkpoint: %s' % args.resume)
 
-        loc = 'cuda:{}'.format(args.local_rank)
+        if torch.cuda.is_available():
+            loc = 'cuda:{}'.format(args.local_rank)
+        else:
+            loc = torch.device('cpu')
         checkpoint = torch.load(args.resume, map_location=loc)
 
         weights = checkpoint['model'] if 'model' in checkpoint else checkpoint
@@ -213,6 +216,16 @@ def main(args):
     # evaluate
     if args.eval:
         val_results = {}
+
+        if 'boiling' in args.val_dataset:
+            results_dict = validate_boiling(model_without_ddp,
+                                           with_speed_metric=args.with_speed_metric,
+                                           attn_splits_list=args.attn_splits_list,
+                                           corr_radius_list=args.corr_radius_list,
+                                           prop_radius_list=args.prop_radius_list,
+                                           )
+
+            val_results.update(results_dict)
 
         if 'chairs' in args.val_dataset:
             results_dict = validate_chairs(model_without_ddp,
@@ -442,6 +455,15 @@ def main(args):
 
                 val_results = {}
                 # support validation on multiple datasets
+                if 'boiling' in args.val_dataset:
+                    results_dict = validate_boiling(model_without_ddp,
+                                                   with_speed_metric=args.with_speed_metric,
+                                                   attn_splits_list=args.attn_splits_list,
+                                                   corr_radius_list=args.corr_radius_list,
+                                                   prop_radius_list=args.prop_radius_list,
+                                                   )
+                    if args.local_rank == 0:
+                        val_results.update(results_dict)
                 if 'chairs' in args.val_dataset:
                     results_dict = validate_chairs(model_without_ddp,
                                                    with_speed_metric=args.with_speed_metric,

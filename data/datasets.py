@@ -11,7 +11,16 @@ import os.path as osp
 
 from utils import frame_utils
 from data.transforms import FlowAugmentor, SparseFlowAugmentor
+from more_itertools import pairwise
 
+def check_path(path):
+    if not osp.isabs(path):
+        path = osp.abspath(path)
+
+    if osp.exists(path):
+        return path
+    else:
+        raise Exception("Path does not exist.")
 
 class FlowDataset(data.Dataset):
     def __init__(self, aug_params=None, sparse=False,
@@ -159,7 +168,7 @@ class MpiSintel(FlowDataset):
 
 
 class FlyingChairs(FlowDataset):
-    def __init__(self, aug_params=None, split='train',
+    def __init__(self, aug_params=None, split='training',
                  root='datasets/FlyingChairs_release/data',
                  ):
         super(FlyingChairs, self).__init__(aug_params)
@@ -175,6 +184,44 @@ class FlyingChairs(FlowDataset):
             if (split == 'training' and xid == 1) or (split == 'validation' and xid == 2):
                 self.flow_list += [flows[i]]
                 self.image_list += [[images[2 * i], images[2 * i + 1]]]
+
+
+class BoilingData(FlowDataset):
+    def __init__(self, aug_params=None, split='validation',
+                 root='datasets/PBSimulations'):
+        super(BoilingData, self).__init__(aug_params)
+
+        if split == 'test':
+            self.is_test = True
+        elif split == 'validation':
+            image_dir = osp.join(check_path(root), 'VFLIP_IMG')
+            flo_dir = osp.join(check_path(root), 'VFLIP_FLO')
+            filelist = sorted(os.listdir(image_dir))
+            for file1, file2 in pairwise(filelist):
+                img_1 = os.path.join(image_dir, file1)
+                img_2 = os.path.join(image_dir, file2)
+                
+                self.image_list += [[img_1, img_2]]
+                if split != 'test':
+                    flow_map = os.path.join(flo_dir, file1[:-3] + "flo")
+                    self.flow_list += [flow_map]
+        else:
+            image_dirs = [osp.join(check_path(root), 'VFLIP_IMG'),
+                          osp.join(check_path(root), 'HFLIP_IMG'),
+                          osp.join(check_path(root), 'ORIG_IMG')]
+            flo_dirs = [osp.join(check_path(root), 'VFLIP_FLO'),
+                        osp.join(check_path(root), 'HFLIP_FLO'),
+                        osp.join(check_path(root), 'ORIG_FLO')]
+            for image_dir, flo_dir in zip(image_dirs, flo_dirs):
+                filelist = sorted(os.listdir(image_dir))
+                for file1, file2 in pairwise(filelist):
+                    img_1 = os.path.join(image_dir, file1)
+                    img_2 = os.path.join(image_dir, file2)
+                    
+                    self.image_list += [[img_1, img_2]]
+                    if split != 'test':
+                        flow_map = os.path.join(flo_dir, file1[:-3] + "flo")
+                        self.flow_list += [flow_map]
 
 
 class FlyingThings3D(FlowDataset):
@@ -275,6 +322,9 @@ def build_train_dataset(args):
 
         train_dataset = FlyingChairs(aug_params, split='training')
 
+    elif args.stage == 'boiling':
+        train_dataset = BoilingData(split='training')
+    
     elif args.stage == 'things':
         aug_params = {'crop_size': args.image_size, 'min_scale': -0.4, 'max_scale': 0.8, 'do_flip': True}
 

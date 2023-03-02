@@ -1,0 +1,6 @@
+*.pyc
+.DS_Store
+expts/
+pretrained/
+datasets/
+results/

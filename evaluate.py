@@ -4,6 +4,7 @@ import time
 import numpy as np
 import torch
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 import data
 from utils import frame_utils
@@ -102,6 +103,64 @@ def create_kitti_submission(model,
             save_vis_flow_tofile(flow, vis_flow_file)
         else:
             frame_utils.writeFlowKITTI(output_filename, flow)
+
+@torch.no_grad()
+def validate_boiling(model,
+                     with_speed_metric=False,
+                     attn_splits_list=False,
+                     corr_radius_list=False,
+                     prop_radius_list=False,
+                    ):
+    """ Perform evaluation on the BoilingData"""
+    model.eval()
+    epe_list = []
+    mean_epes = []
+    results = {}
+
+    val_dataset = data.BoilingData()
+
+    for val_id in range(len(val_dataset)):
+        image1, image2, flow_gt, _ = val_dataset[val_id]
+        if torch.cuda.is_available():
+            image1 = image1[None].cuda()
+            image2 = image2[None].cuda()
+        else:
+            image1 = image1[None]
+            image2 = image2[None]
+
+        results_dict = model(image1, image2,
+                             attn_splits_list=attn_splits_list,
+                             corr_radius_list=corr_radius_list,
+                             prop_radius_list=prop_radius_list,
+                             )
+        flow_pr = results_dict['flow_preds'][-1]  # [B, 2, H, W]
+        flow = flow_pr[0].permute(1, 2, 0).cpu().numpy()
+        assert flow_pr.size()[-2:] == flow_gt.size()[-2:]
+
+        output_file = 'results/FLO/' + "{:04d}".format(val_id)  + '.flo'
+        frame_utils.writeFlow(output_file, flow)
+        epe = torch.sum((flow_pr[0].cpu() - flow_gt) ** 2, dim=0).sqrt()
+        epe_list.append(epe.view(-1).numpy())
+        mean_epes.append(np.mean(epe.view(-1).numpy()))
+
+    epe_all = np.concatenate(epe_list) 
+    epe = np.mean(epe_all)
+    px1 = np.mean(epe_all > 1)
+    px3 = np.mean(epe_all > 3)
+    px5 = np.mean(epe_all > 5)
+    x_coords = list(range(len(val_dataset)))
+    
+    plt.plot(x_coords, mean_epes)
+    plt.plot(x_coords, [epe]*len(x_coords))
+    plt.savefig("results/framewise_epe.png")
+    
+    print("Validation Chairs EPE: %.3f, 1px: %.3f, 3px: %.3f, 5px: %.3f" % (epe, px1, px3, px5))
+    results['bubbles_epe'] = epe
+    results['bubbles_1px'] = px1
+    results['bubbles_3px'] = px3
+    results['bubbles_5px'] = px5
+
+    return results
 
 
 @torch.no_grad()
@@ -613,9 +672,17 @@ def inference_on_dir(model,
 
         if inference_size is None:
             padder = InputPadder(image1.shape, padding_factor=padding_factor)
-            image1, image2 = padder.pad(image1[None].cuda(), image2[None].cuda())
+            if torch.cuda.is_available():
+                image1, image2 = padder.pad(image1[None].cuda(), image2[None].cuda())
+            else:
+                image1, image2 = padder.pad(image1[None], image2[None])
+
         else:
-            image1, image2 = image1[None].cuda(), image2[None].cuda()
+            if torch.cuda.is_available():
+                image1, image2 = image1[None].cuda(), image2[None].cuda()
+            else:
+                image1, image2 = image1[None], image2[None]
+
 
         # resize before inference
         if inference_size is not None:
@@ -647,10 +714,10 @@ def inference_on_dir(model,
         else:
             flow = flow_pr[0].permute(1, 2, 0).cpu().numpy()  # [H, W, 2]
 
-        output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_flow.png')
+        # output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_flow.png')
 
         # save vis flow
-        save_vis_flow_tofile(flow, output_file)
+        # save_vis_flow_tofile(flow, output_file)
 
         # also predict backward flow
         if pred_bidir_flow:
@@ -661,11 +728,13 @@ def inference_on_dir(model,
             else:
                 flow_bwd = flow_pr[1].permute(1, 2, 0).cpu().numpy()  # [H, W, 2]
 
-            output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_flow_bwd.png')
+            #output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_flow_bwd.png')
 
             # save vis flow
-            save_vis_flow_tofile(flow_bwd, output_file)
-
+            # save_vis_flow_tofile(flow_bwd, output_file)
+            if save_flo_flow:
+                output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_bwd.flo')
+                frame_utils.writeFlow(output_file, flow)
             # forward-backward consistency check
             # occlusion is 1
             if fwd_bwd_consistency_check:
@@ -685,5 +754,5 @@ def inference_on_dir(model,
                 Image.fromarray((bwd_occ[0].cpu().numpy() * 255.).astype(np.uint8)).save(bwd_occ_file)
 
         if save_flo_flow:
-            output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_pred.flo')
+            output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '.flo')
             frame_utils.writeFlow(output_file, flow)
