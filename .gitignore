@@ -4,3 +4,5 @@ expts/
 pretrained/
 datasets/
 results/
+*.sub
+*.out

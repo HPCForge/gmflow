@@ -137,24 +137,15 @@ def validate_boiling(model,
         flow = flow_pr[0].permute(1, 2, 0).cpu().numpy()
         assert flow_pr.size()[-2:] == flow_gt.size()[-2:]
 
-        output_file = 'results/FLO/' + "{:04d}".format(val_id)  + '.flo'
-        frame_utils.writeFlow(output_file, flow)
         epe = torch.sum((flow_pr[0].cpu() - flow_gt) ** 2, dim=0).sqrt()
         epe_list.append(epe.view(-1).numpy())
-        mean_epes.append(np.mean(epe.view(-1).numpy()))
 
     epe_all = np.concatenate(epe_list) 
     epe = np.mean(epe_all)
     px1 = np.mean(epe_all > 1)
     px3 = np.mean(epe_all > 3)
     px5 = np.mean(epe_all > 5)
-    x_coords = list(range(len(val_dataset)))
-    
-    plt.plot(x_coords, mean_epes)
-    plt.plot(x_coords, [epe]*len(x_coords))
-    plt.savefig("results/framewise_epe.png")
-    
-    print("Validation Chairs EPE: %.3f, 1px: %.3f, 3px: %.3f, 5px: %.3f" % (epe, px1, px3, px5))
+    print("Validation Boiling EPE: %.3f, 1px: %.3f, 3px: %.3f, 5px: %.3f" % (epe, px1, px3, px5))
     results['bubbles_epe'] = epe
     results['bubbles_1px'] = px1
     results['bubbles_3px'] = px3
@@ -714,10 +705,10 @@ def inference_on_dir(model,
         else:
             flow = flow_pr[0].permute(1, 2, 0).cpu().numpy()  # [H, W, 2]
 
-        # output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_flow.png')
+        output_file = os.path.join(output_path, os.path.basename(filenames[test_id])[:-4] + '_flow.png')
 
         # save vis flow
-        # save_vis_flow_tofile(flow, output_file)
+        save_vis_flow_tofile(flow, output_file)
 
         # also predict backward flow
         if pred_bidir_flow:

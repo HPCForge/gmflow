@@ -185,43 +185,26 @@ class FlyingChairs(FlowDataset):
                 self.flow_list += [flows[i]]
                 self.image_list += [[images[2 * i], images[2 * i + 1]]]
 
-
 class BoilingData(FlowDataset):
-    def __init__(self, aug_params=None, split='validation',
-                 root='datasets/PBSimulations'):
+    def __init__(self, aug_params=None, split='validation', root='datasets/Boiling'):
         super(BoilingData, self).__init__(aug_params)
 
-        if split == 'test':
-            self.is_test = True
-        elif split == 'validation':
-            image_dir = osp.join(check_path(root), 'VFLIP_IMG')
-            flo_dir = osp.join(check_path(root), 'VFLIP_FLO')
-            filelist = sorted(os.listdir(image_dir))
-            for file1, file2 in pairwise(filelist):
-                img_1 = os.path.join(image_dir, file1)
-                img_2 = os.path.join(image_dir, file2)
-                
-                self.image_list += [[img_1, img_2]]
-                if split != 'test':
-                    flow_map = os.path.join(flo_dir, file1[:-3] + "flo")
-                    self.flow_list += [flow_map]
+        if split == 'training':
+            root = osp.join(root, 'train')
+            for simul_dir in os.listdir(root):
+                image_list = sorted(glob(osp.join(root, simul_dir, 'img', '*.png')))
+                flow_list = sorted(glob(osp.join(root, simul_dir, 'flow', '*.flo')))
+                for i, (file1,file2) in enumerate(pairwise(image_list)):
+                    self.image_list += [[file1, file2]]
+                    self.flow_list += [flow_list[i]]
         else:
-            image_dirs = [osp.join(check_path(root), 'VFLIP_IMG'),
-                          osp.join(check_path(root), 'HFLIP_IMG'),
-                          osp.join(check_path(root), 'ORIG_IMG')]
-            flo_dirs = [osp.join(check_path(root), 'VFLIP_FLO'),
-                        osp.join(check_path(root), 'HFLIP_FLO'),
-                        osp.join(check_path(root), 'ORIG_FLO')]
-            for image_dir, flo_dir in zip(image_dirs, flo_dirs):
-                filelist = sorted(os.listdir(image_dir))
-                for file1, file2 in pairwise(filelist):
-                    img_1 = os.path.join(image_dir, file1)
-                    img_2 = os.path.join(image_dir, file2)
-                    
-                    self.image_list += [[img_1, img_2]]
-                    if split != 'test':
-                        flow_map = os.path.join(flo_dir, file1[:-3] + "flo")
-                        self.flow_list += [flow_map]
+            root = osp.join(root, 'valid')
+            for simul_dir in os.listdir(root):
+                image_list = sorted(glob(osp.join(root, simul_dir, 'img', '*.png')))
+                flow_list = sorted(glob(osp.join(root, simul_dir, 'flow', '*.flo')))
+                for i, (file1,file2) in enumerate(pairwise(image_list)):
+                    self.image_list += [[file1, file2]]
+                    self.flow_list += [flow_list[i]]
 
 
 class FlyingThings3D(FlowDataset):

@@ -11,7 +11,7 @@ def flow_loss_func(flow_preds, flow_gt, valid,
 
     # exlude invalid pixels and extremely large diplacements
     mag = torch.sum(flow_gt ** 2, dim=1).sqrt()  # [B, H, W]
-    valid = (valid >= 0.5) & (mag < max_flow)
+    valid = (valid >= 1.0) & (mag < max_flow)
 
     for i in range(n_predictions):
         i_weight = gamma ** (n_predictions - i - 1)
