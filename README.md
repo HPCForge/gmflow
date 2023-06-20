@@ -1,14 +1,14 @@
 # GMFlow
 
 
-Official PyTorch implementation of paper:
+Fork of the Official PyTorch implementation of paper for BubbleML data:
 
 [**GMFlow: Learning Optical Flow via Global Matching**](https://arxiv.org/abs/2111.13680), **CVPR 2022, Oral**
 
 Authors: [Haofei Xu](https://haofeixu.github.io/), [Jing Zhang](https://scholar.google.com.hk/citations?user=9jH5v74AAAAJ), [Jianfei Cai](https://jianfei-cai.github.io/), [Hamid Rezatofighi](https://scholar.google.com/citations?user=VxAuxMwAAAAJ), [Dacheng Tao](https://scholar.google.com/citations?user=RwlJNLcAAAAJ)
 
 
-**11/15/2022 Update: Check out our new work: [Unifying Flow, Stereo and Depth Estimation](https://haofeixu.github.io/unimatch/) and code: [unimatch](https://github.com/autonomousvision/unimatch) for extending GMFlow to stereo and depth tasks. [More pretrained GMFlow models](https://github.com/autonomousvision/unimatch/blob/master/MODEL_ZOO.md) with different speed-accuracy trade-offs are also released. Check out our [Colab](https://colab.research.google.com/drive/1r5m-xVy3Kw60U-m5VB-aQ98oqqg_6cab?usp=sharing) and [HuggingFace](https://huggingface.co/spaces/haofeixu/unimatch) demo to play with GMFlow in your browser!**
+** PyTorch dataloaders for BubbleML optical flow data have been added for training and evaluation. The optical flow training data can be linked to the datasets folder along with FlyingChairs, FlyingThings3D etc. similar to what is done originally in GMFlow. The training script for BubbleML can be found in scripts.**
 
 
 
